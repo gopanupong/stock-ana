@@ -5,22 +5,30 @@ const cleanNumber = (value: any): number => {
   if (typeof value === 'number') return value;
   if (!value) return 0;
   // Remove %, commas, and extra whitespace, then parse
-  // Added regex to remove currency symbols and non-numeric chars except . and -
   const cleanStr = String(value).replace(/[^0-9.-]/g, '');
   const parsed = parseFloat(cleanStr);
   return isNaN(parsed) ? 0 : parsed;
 };
 
-// New function to handle percentages specifically
-const cleanPercentage = (value: any): number => {
+// 1. For metrics typically > 1% (e.g. Tax Rate 21%, Operating Margin 15%, WACC 8%)
+// Logic: If value is <= 1.0 (e.g. 0.21), assume decimal and convert to 21.
+const cleanLargePercentage = (value: any): number => {
   let num = cleanNumber(value);
-  // Heuristic: If value is small (e.g. 0.15 for 15% or 0.04 for 4%), convert to percentage scale (0-100).
-  // Threshold 0.9 is chosen because most financial ratios (Margins, Tax, WACC) are > 1%.
-  // Even if Dividend Yield is 0.5%, following the 0-100 rule in prompt, AI should send 0.5.
-  // If AI sends 0.005 (decimal for 0.5%), this logic fixes it to 0.5.
-  // If AI sends 0.5 (decimal for 50%), this logic fixes it to 50.
-  // If AI sends 5 (scale), it stays 5.
-  if (Math.abs(num) <= 0.9 && num !== 0) {
+  if (Math.abs(num) <= 1.0 && num !== 0) {
+    return num * 100;
+  }
+  return num;
+};
+
+// 2. For metrics typically < 10-15% (e.g. Dividend Yield 0.7%, Risk Free 4.2%, Terminal Growth 2.5%)
+// Logic: 
+// - If value < 0.15 (e.g. 0.04), assume decimal -> convert to 4.0.
+// - If value >= 0.15 (e.g. 0.7 or 4.0), assume scale -> keep as is.
+// This prevents 0.7 (Dividend Yield) from becoming 70%.
+const cleanSmallPercentage = (value: any): number => {
+  let num = cleanNumber(value);
+  // Threshold 0.15 (15%) chosen because Dividend Yield/Rf are rarely higher than this.
+  if (Math.abs(num) < 0.15 && num !== 0) {
     return num * 100;
   }
   return num;
@@ -48,6 +56,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
     - **PERCENTAGES:** All percentages (Growth, Margin, Tax, WACC, RiskFree, ROIC, etc.) MUST be returned on a 0-100 scale.
       * Example: Write 15.5 for 15.5%.
       * Example: Write 4.0 for 4.0%.
+      * Example: Write 0.7 for 0.7% (Dividend Yield).
       * DO NOT write 0.155 or 0.04.
     - **RATIOS:** Beta, PEG, EV/Sales, Coverage Ratio should be natural numbers/decimals (e.g., 1.2, 2.5).
     - **CURRENCY:** Prices and Values in standard currency units (e.g. 150.25).
@@ -237,51 +246,52 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
       const rawData = JSON.parse(jsonString);
       
       // SANITIZATION LAYER: Ensure all numbers are actually numbers
+      // We apply specific cleaning logic depending on whether the metric is typically small (Yields) or large (Margins)
       analysisData = {
         ...rawData,
         currentPrice: cleanNumber(rawData.currentPrice),
-        riskFreeRate: cleanPercentage(rawData.riskFreeRate), // %
+        riskFreeRate: cleanSmallPercentage(rawData.riskFreeRate), // Small (e.g. 4.0)
         beta: cleanNumber(rawData.beta),
         lastRevenue: cleanNumber(rawData.lastRevenue),
         scenarios: rawData.scenarios.map((s: any) => ({
           ...s,
           intrinsicValue: cleanNumber(s.intrinsicValue),
           relativeValue: cleanNumber(s.relativeValue),
-          upsideDownside: cleanPercentage(s.upsideDownside), // %
+          upsideDownside: cleanLargePercentage(s.upsideDownside), // Large
           assumptions: {
-            revenueGrowth: cleanPercentage(s.assumptions?.revenueGrowth), // %
-            operatingMargin: cleanPercentage(s.assumptions?.operatingMargin), // %
-            taxRate: cleanPercentage(s.assumptions?.taxRate), // %
-            wacc: cleanPercentage(s.assumptions?.wacc), // %
-            terminalGrowthRate: cleanPercentage(s.assumptions?.terminalGrowthRate), // %
+            revenueGrowth: cleanLargePercentage(s.assumptions?.revenueGrowth), // Large
+            operatingMargin: cleanLargePercentage(s.assumptions?.operatingMargin), // Large
+            taxRate: cleanLargePercentage(s.assumptions?.taxRate), // Large
+            wacc: cleanLargePercentage(s.assumptions?.wacc), // Large
+            terminalGrowthRate: cleanSmallPercentage(s.assumptions?.terminalGrowthRate), // Small (e.g. 2.5)
           }
         })),
         deepDiveMetrics: rawData.deepDiveMetrics ? {
           ...rawData.deepDiveMetrics,
-          equityRiskPremium: cleanPercentage(rawData.deepDiveMetrics.equityRiskPremium), // %
-          costOfEquity: cleanPercentage(rawData.deepDiveMetrics.costOfEquity), // %
-          costOfDebt: cleanPercentage(rawData.deepDiveMetrics.costOfDebt), // %
-          roic: cleanPercentage(rawData.deepDiveMetrics.roic), // %
-          reinvestmentRate: cleanPercentage(rawData.deepDiveMetrics.reinvestmentRate), // %
-          pvTerminalValuePct: cleanPercentage(rawData.deepDiveMetrics.pvTerminalValuePct), // %
+          equityRiskPremium: cleanSmallPercentage(rawData.deepDiveMetrics.equityRiskPremium), // Small
+          costOfEquity: cleanLargePercentage(rawData.deepDiveMetrics.costOfEquity), // Large
+          costOfDebt: cleanSmallPercentage(rawData.deepDiveMetrics.costOfDebt), // Small (usually < 10%)
+          roic: cleanLargePercentage(rawData.deepDiveMetrics.roic), // Large
+          reinvestmentRate: cleanLargePercentage(rawData.deepDiveMetrics.reinvestmentRate), // Large
+          pvTerminalValuePct: cleanLargePercentage(rawData.deepDiveMetrics.pvTerminalValuePct), // Large
           
           interestCoverageRatio: cleanNumber(rawData.deepDiveMetrics.interestCoverageRatio),
-          defaultSpread: cleanPercentage(rawData.deepDiveMetrics.defaultSpread), // %
-          debtToEquityRatio: cleanPercentage(rawData.deepDiveMetrics.debtToEquityRatio), // %
+          defaultSpread: cleanSmallPercentage(rawData.deepDiveMetrics.defaultSpread), // Small
+          debtToEquityRatio: cleanLargePercentage(rawData.deepDiveMetrics.debtToEquityRatio), // Large
           salesToCapitalRatio: cleanNumber(rawData.deepDiveMetrics.salesToCapitalRatio), // Ratio
-          roe: cleanPercentage(rawData.deepDiveMetrics.roe), // %
+          roe: cleanLargePercentage(rawData.deepDiveMetrics.roe), // Large
           peRatio: cleanNumber(rawData.deepDiveMetrics.peRatio),
           sectorPeRatio: cleanNumber(rawData.deepDiveMetrics.sectorPeRatio),
 
           marketCap: cleanNumber(rawData.deepDiveMetrics.marketCap),
           enterpriseValue: cleanNumber(rawData.deepDiveMetrics.enterpriseValue),
           cashAndEquivalents: cleanNumber(rawData.deepDiveMetrics.cashAndEquivalents),
-          preTaxOperatingMargin: cleanPercentage(rawData.deepDiveMetrics.preTaxOperatingMargin), // %
-          effectiveTaxRate: cleanPercentage(rawData.deepDiveMetrics.effectiveTaxRate), // %
-          dividendYield: cleanPercentage(rawData.deepDiveMetrics.dividendYield), // %
+          preTaxOperatingMargin: cleanLargePercentage(rawData.deepDiveMetrics.preTaxOperatingMargin), // Large
+          effectiveTaxRate: cleanLargePercentage(rawData.deepDiveMetrics.effectiveTaxRate), // Large
+          dividendYield: cleanSmallPercentage(rawData.deepDiveMetrics.dividendYield), // Small (Crucial!)
           fcfToFirm: cleanNumber(rawData.deepDiveMetrics.fcfToFirm),
 
-          grossMargin: cleanPercentage(rawData.deepDiveMetrics.grossMargin), // %
+          grossMargin: cleanLargePercentage(rawData.deepDiveMetrics.grossMargin), // Large
           pegRatio: cleanNumber(rawData.deepDiveMetrics.pegRatio),
           bookValuePerShare: cleanNumber(rawData.deepDiveMetrics.bookValuePerShare),
           latestQuarterRevenue: cleanNumber(rawData.deepDiveMetrics.latestQuarterRevenue),
@@ -295,7 +305,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
         
         investmentThesis: rawData.investmentThesis ? {
           ...rawData.investmentThesis,
-          marginOfSafety: cleanPercentage(rawData.investmentThesis.marginOfSafety), // %
+          marginOfSafety: cleanLargePercentage(rawData.investmentThesis.marginOfSafety), // Large
           evSalesTTM: cleanNumber(rawData.investmentThesis.evSalesTTM),
           evSalesFwd: cleanNumber(rawData.investmentThesis.evSalesFwd),
           justifiedEvSales: cleanNumber(rawData.investmentThesis.justifiedEvSales),
