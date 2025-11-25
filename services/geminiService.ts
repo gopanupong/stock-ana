@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { StockAnalysis } from "../types";
 
@@ -6,14 +5,20 @@ const cleanNumber = (value: any): number => {
   if (typeof value === 'number') return value;
   if (!value) return 0;
   // Remove %, commas, and extra whitespace, then parse
-  const cleanStr = String(value).replace(/[%,\s]/g, '');
+  // Added regex to remove currency symbols and non-numeric chars except . and -
+  const cleanStr = String(value).replace(/[^0-9.-]/g, '');
   const parsed = parseFloat(cleanStr);
   return isNaN(parsed) ? 0 : parsed;
 };
 
 export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnalysis> => {
+  // Check for API Key with a more helpful error message
   if (!process.env.API_KEY) {
-    throw new Error("API Key is missing. Please check your environment variables.");
+    throw new Error(
+      "ไม่พบ API Key! \n" +
+      "1. หากรันในเครื่อง: กรุณาสร้างไฟล์ชื่อ .env และใส่เนื้อหา 'API_KEY=รหัสของคุณ' \n" +
+      "2. หากอยู่บน Vercel: ไปที่ Settings > Environment Variables แล้วเพิ่ม Key ชื่อ API_KEY"
+    );
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -93,8 +98,34 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
              },
              "description": "string (Thai)"
            },
-           { "type": "Base Case", ... },
-           { "type": "Best Case", ... }
+           {
+             "type": "Base Case",
+             "intrinsicValue": number,
+             "relativeValue": number,
+             "upsideDownside": number,
+             "assumptions": {
+               "revenueGrowth": number,
+               "operatingMargin": number,
+               "taxRate": number,
+               "wacc": number,
+               "terminalGrowthRate": number
+             },
+             "description": "string (Thai)"
+           },
+           {
+             "type": "Best Case",
+             "intrinsicValue": number,
+             "relativeValue": number,
+             "upsideDownside": number,
+             "assumptions": {
+               "revenueGrowth": number,
+               "operatingMargin": number,
+               "taxRate": number,
+               "wacc": number,
+               "terminalGrowthRate": number
+             },
+             "description": "string (Thai)"
+           }
          ],
          "deepDiveMetrics": {
             "equityRiskPremium": number,
@@ -272,6 +303,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
     if (error.message && (error.message.includes("400") || error.message.includes("INVALID_ARGUMENT"))) {
        throw new Error(`Config Error: ${error.message} (Please check tools configuration)`);
     }
+    // Pass through the custom error message if it's the missing key error
     throw new Error(error.message || "ไม่สามารถวิเคราะห์หุ้นได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง");
   }
 };
