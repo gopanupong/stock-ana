@@ -1,5 +1,5 @@
 {
-  "name": "Damodaran Style DCF Analyzer",
+  "name": "new Damodaran Style DCF Analyzer",
   "description": "แอปพลิเคชันวิเคราะห์มูลค่าหุ้นด้วยวิธี Discounted Cash Flow (DCF) ตามแบบฉบับ Aswath Damodaran แสดงผล 3 ฉากทัศน์ (Worst, Base, Best Case) โดยใช้ข้อมูลล่าสุดจาก Gemini AI",
   "requestFramePermissions": []
 }

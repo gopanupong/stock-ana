@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Damodaran DCF Analyzer
 
-# Run and deploy your AI Studio app
+แอปพลิเคชันวิเคราะห์มูลค่าหุ้นด้วยวิธี Discounted Cash Flow (DCF) ตามแบบฉบับ Aswath Damodaran โดยใช้พลังของ Google Gemini AI
 
-This contains everything you need to run your app locally.
+## 🚀 การรันโปรเจกต์ (Local Development)
 
-View your app in AI Studio: https://ai.studio/apps/drive/10m2WyHXrwXyYHWh2-230fCr3EeX1cxrQ
+1.  **ติดตั้ง Node.js** (แนะนำเวอร์ชัน 18 หรือสูงกว่า)
+2.  **ติดตั้ง Dependencies**:
+    ```bash
+    npm install
+    ```
+3.  **ตั้งค่า Environment Variable**:
+    *   สร้างไฟล์ `.env` ที่ root folder
+    *   ใส่ API Key ของคุณ: `API_KEY=your_gemini_api_key_here`
+4.  **รันเซิร์ฟเวอร์**:
+    ```bash
+    npm run dev
+    ```
 
-## Run Locally
+## ☁️ การ Deploy บน Vercel
 
-**Prerequisites:**  Node.js
+1.  อัปโหลดโค้ดขึ้น **GitHub**, **GitLab**, หรือ **Bitbucket**
+2.  ไปที่ [Vercel Dashboard](https://vercel.com/dashboard) แล้วกด **"Add New..."** -> **"Project"**
+3.  เลือก Repository ที่คุณอัปโหลดไว้
+4.  **สำคัญ:** ในหน้าตั้งค่าการ Deploy ตรงส่วน **Environment Variables**:
+    *   **Key:** `API_KEY`
+    *   **Value:** (ใส่ Gemini API Key ของคุณ)
+5.  กด **Deploy** 🚀
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Vercel จะทำการ Build และ Deploy แอปพลิเคชันให้อัตโนมัติ
