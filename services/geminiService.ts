@@ -11,6 +11,21 @@ const cleanNumber = (value: any): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// New function to handle percentages specifically
+const cleanPercentage = (value: any): number => {
+  let num = cleanNumber(value);
+  // Heuristic: If value is small (e.g. 0.15 for 15% or 0.04 for 4%), convert to percentage scale (0-100).
+  // Threshold 0.9 is chosen because most financial ratios (Margins, Tax, WACC) are > 1%.
+  // Even if Dividend Yield is 0.5%, following the 0-100 rule in prompt, AI should send 0.5.
+  // If AI sends 0.005 (decimal for 0.5%), this logic fixes it to 0.5.
+  // If AI sends 0.5 (decimal for 50%), this logic fixes it to 50.
+  // If AI sends 5 (scale), it stays 5.
+  if (Math.abs(num) <= 0.9 && num !== 0) {
+    return num * 100;
+  }
+  return num;
+};
+
 export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnalysis> => {
   // Check for API Key with a more helpful error message
   if (!process.env.API_KEY) {
@@ -29,9 +44,17 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
     
     ROLE: Act as Aswath Damodaran (The Dean of Valuation). Focus on the "Narrative and Numbers" philosophy.
     
+    DATA FORMAT RULES (STRICT):
+    - **PERCENTAGES:** All percentages (Growth, Margin, Tax, WACC, RiskFree, ROIC, etc.) MUST be returned on a 0-100 scale.
+      * Example: Write 15.5 for 15.5%.
+      * Example: Write 4.0 for 4.0%.
+      * DO NOT write 0.155 or 0.04.
+    - **RATIOS:** Beta, PEG, EV/Sales, Coverage Ratio should be natural numbers/decimals (e.g., 1.2, 2.5).
+    - **CURRENCY:** Prices and Values in standard currency units (e.g. 150.25).
+
     PROCESS:
     1. MARKET DATA (Google Search Tool):
-       - Find LATEST Price, Risk-Free Rate (10Y US Treasury), Beta, Revenue, Operating Margins.
+       - Find LATEST Price, Risk-Free Rate (10Y US Treasury - Expect ~3-5%), Beta, Revenue, Operating Margins.
        - Find Debt data, Interest Expense (for Coverage Ratio), and Sector PE.
        - Find Market Cap, Enterprise Value, Cash on Hand, Dividend Yield.
        - **CRITICAL:** Find the LATEST REPORTED QUARTERLY results (Revenue, Net Income, EPS) and specify the Quarter (e.g., Q3 2024).
@@ -217,48 +240,48 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
       analysisData = {
         ...rawData,
         currentPrice: cleanNumber(rawData.currentPrice),
-        riskFreeRate: cleanNumber(rawData.riskFreeRate),
+        riskFreeRate: cleanPercentage(rawData.riskFreeRate), // %
         beta: cleanNumber(rawData.beta),
         lastRevenue: cleanNumber(rawData.lastRevenue),
         scenarios: rawData.scenarios.map((s: any) => ({
           ...s,
           intrinsicValue: cleanNumber(s.intrinsicValue),
           relativeValue: cleanNumber(s.relativeValue),
-          upsideDownside: cleanNumber(s.upsideDownside),
+          upsideDownside: cleanPercentage(s.upsideDownside), // %
           assumptions: {
-            revenueGrowth: cleanNumber(s.assumptions?.revenueGrowth),
-            operatingMargin: cleanNumber(s.assumptions?.operatingMargin),
-            taxRate: cleanNumber(s.assumptions?.taxRate),
-            wacc: cleanNumber(s.assumptions?.wacc),
-            terminalGrowthRate: cleanNumber(s.assumptions?.terminalGrowthRate),
+            revenueGrowth: cleanPercentage(s.assumptions?.revenueGrowth), // %
+            operatingMargin: cleanPercentage(s.assumptions?.operatingMargin), // %
+            taxRate: cleanPercentage(s.assumptions?.taxRate), // %
+            wacc: cleanPercentage(s.assumptions?.wacc), // %
+            terminalGrowthRate: cleanPercentage(s.assumptions?.terminalGrowthRate), // %
           }
         })),
         deepDiveMetrics: rawData.deepDiveMetrics ? {
           ...rawData.deepDiveMetrics,
-          equityRiskPremium: cleanNumber(rawData.deepDiveMetrics.equityRiskPremium),
-          costOfEquity: cleanNumber(rawData.deepDiveMetrics.costOfEquity),
-          costOfDebt: cleanNumber(rawData.deepDiveMetrics.costOfDebt),
-          roic: cleanNumber(rawData.deepDiveMetrics.roic),
-          reinvestmentRate: cleanNumber(rawData.deepDiveMetrics.reinvestmentRate),
-          pvTerminalValuePct: cleanNumber(rawData.deepDiveMetrics.pvTerminalValuePct),
+          equityRiskPremium: cleanPercentage(rawData.deepDiveMetrics.equityRiskPremium), // %
+          costOfEquity: cleanPercentage(rawData.deepDiveMetrics.costOfEquity), // %
+          costOfDebt: cleanPercentage(rawData.deepDiveMetrics.costOfDebt), // %
+          roic: cleanPercentage(rawData.deepDiveMetrics.roic), // %
+          reinvestmentRate: cleanPercentage(rawData.deepDiveMetrics.reinvestmentRate), // %
+          pvTerminalValuePct: cleanPercentage(rawData.deepDiveMetrics.pvTerminalValuePct), // %
           
           interestCoverageRatio: cleanNumber(rawData.deepDiveMetrics.interestCoverageRatio),
-          defaultSpread: cleanNumber(rawData.deepDiveMetrics.defaultSpread),
-          debtToEquityRatio: cleanNumber(rawData.deepDiveMetrics.debtToEquityRatio),
-          salesToCapitalRatio: cleanNumber(rawData.deepDiveMetrics.salesToCapitalRatio),
-          roe: cleanNumber(rawData.deepDiveMetrics.roe),
+          defaultSpread: cleanPercentage(rawData.deepDiveMetrics.defaultSpread), // %
+          debtToEquityRatio: cleanPercentage(rawData.deepDiveMetrics.debtToEquityRatio), // %
+          salesToCapitalRatio: cleanNumber(rawData.deepDiveMetrics.salesToCapitalRatio), // Ratio
+          roe: cleanPercentage(rawData.deepDiveMetrics.roe), // %
           peRatio: cleanNumber(rawData.deepDiveMetrics.peRatio),
           sectorPeRatio: cleanNumber(rawData.deepDiveMetrics.sectorPeRatio),
 
           marketCap: cleanNumber(rawData.deepDiveMetrics.marketCap),
           enterpriseValue: cleanNumber(rawData.deepDiveMetrics.enterpriseValue),
           cashAndEquivalents: cleanNumber(rawData.deepDiveMetrics.cashAndEquivalents),
-          preTaxOperatingMargin: cleanNumber(rawData.deepDiveMetrics.preTaxOperatingMargin),
-          effectiveTaxRate: cleanNumber(rawData.deepDiveMetrics.effectiveTaxRate),
-          dividendYield: cleanNumber(rawData.deepDiveMetrics.dividendYield),
+          preTaxOperatingMargin: cleanPercentage(rawData.deepDiveMetrics.preTaxOperatingMargin), // %
+          effectiveTaxRate: cleanPercentage(rawData.deepDiveMetrics.effectiveTaxRate), // %
+          dividendYield: cleanPercentage(rawData.deepDiveMetrics.dividendYield), // %
           fcfToFirm: cleanNumber(rawData.deepDiveMetrics.fcfToFirm),
 
-          grossMargin: cleanNumber(rawData.deepDiveMetrics.grossMargin),
+          grossMargin: cleanPercentage(rawData.deepDiveMetrics.grossMargin), // %
           pegRatio: cleanNumber(rawData.deepDiveMetrics.pegRatio),
           bookValuePerShare: cleanNumber(rawData.deepDiveMetrics.bookValuePerShare),
           latestQuarterRevenue: cleanNumber(rawData.deepDiveMetrics.latestQuarterRevenue),
@@ -272,7 +295,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
         
         investmentThesis: rawData.investmentThesis ? {
           ...rawData.investmentThesis,
-          marginOfSafety: cleanNumber(rawData.investmentThesis.marginOfSafety),
+          marginOfSafety: cleanPercentage(rawData.investmentThesis.marginOfSafety), // %
           evSalesTTM: cleanNumber(rawData.investmentThesis.evSalesTTM),
           evSalesFwd: cleanNumber(rawData.investmentThesis.evSalesFwd),
           justifiedEvSales: cleanNumber(rawData.investmentThesis.justifiedEvSales),
