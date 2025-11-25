@@ -1,10 +1,9 @@
-
 import React from 'react';
-import { InvestmentThesis } from '../types';
+import { InvestmentThesis as InvestmentThesisData } from '../types';
 import { BookOpen, CheckCircle, AlertTriangle, XCircle, FileText, Target, Zap, Shield } from 'lucide-react';
 
 interface InvestmentThesisProps {
-  thesis: InvestmentThesis;
+  thesis: InvestmentThesisData;
   currency: string;
 }
 

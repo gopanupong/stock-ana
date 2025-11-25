@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell, LabelList, Label } from 'recharts';
 import { StockAnalysis, ScenarioType } from '../types';
 
 interface StockChartProps {
@@ -79,7 +78,7 @@ const StockChart: React.FC<StockChartProps> = ({ data }) => {
           />
           <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255,255,255,0.05)'}} />
           <ReferenceLine y={data.currentPrice} stroke="#fbbf24" strokeDasharray="3 3">
-             <LabelList position="insideTopRight" fill="#fbbf24" fontSize={12} value="Market Price" />
+             <Label position="insideTopRight" fill="#fbbf24" fontSize={12} value="Market Price" />
           </ReferenceLine>
           <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={60}>
             {chartData.map((entry, index) => (
