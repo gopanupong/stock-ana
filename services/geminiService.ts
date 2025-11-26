@@ -74,8 +74,11 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
        - Find LATEST Price, Risk-Free Rate (10Y US Treasury - Expect ~3-5%), Beta, Revenue, Operating Margins.
        - Find Debt data, Interest Expense (for Coverage Ratio), and Sector PE.
        - Find Market Cap, Enterprise Value, Cash on Hand, Dividend Yield.
-       - **CRITICAL:** Find the LAST 4 REPORTED QUARTERS of financial results (Revenue, Net Income, EPS) and specify the periods (e.g., Q3 2024, Q2 2024, etc.).
-       - **CRITICAL:** Find the LAST FULL FISCAL YEAR results (Revenue, Net Income) and specify the Year (e.g., FY 2023).
+       - **CRITICAL - QUARTERLY HISTORY:** Find the LAST 4 *ACTUAL REPORTED* QUARTERS of financial results (Revenue, Net Income, EPS).
+         * **DO NOT** use future estimates or projections (e.g. if today is 2025, do not show Q1 2026).
+         * Must be PAST completed quarters only.
+         * Specify the periods clearly (e.g., Q3 2024, Q2 2024).
+       - **CRITICAL - FISCAL YEAR:** Find the LAST FULL *COMPLETED* FISCAL YEAR results.
        - Find PEG Ratio, Gross Margin, and Book Value Per Share.
     
     2. PART 1: DCF SCENARIOS ANALYSIS
@@ -195,7 +198,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
             "pegRatio": number,
             "bookValuePerShare": number,
             "quarterlyHistory": [
-              { "period": "Q3 2024", "revenue": number, "netIncome": number, "eps": number },
+              { "period": "Q3 2024 (Example)", "revenue": number, "netIncome": number, "eps": number },
               { "period": "Q2 2024", "revenue": number, "netIncome": number, "eps": number },
               { "period": "Q1 2024", "revenue": number, "netIncome": number, "eps": number },
               { "period": "Q4 2023", "revenue": number, "netIncome": number, "eps": number }
@@ -228,7 +231,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
     IMPORTANT: 
     - Text descriptions MUST be in Thai.
     - Be realistic and conservative.
-    - Ensure Quarter and Year labels are accurate.
+    - Ensure Quarter and Year labels are accurate and PAST REPORTED only.
   `;
 
   try {
