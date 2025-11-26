@@ -308,10 +308,10 @@ const DamodaranDeepDive: React.FC<DamodaranDeepDiveProps> = ({ metrics, baseWacc
                <table className="w-full text-[10px] md:text-xs text-left">
                   <thead className="bg-slate-800/50 text-slate-400">
                      <tr>
-                        <th className="p-1.5 font-medium">Period</th>
-                        <th className="p-1.5 font-medium text-right">Rev</th>
-                        <th className="p-1.5 font-medium text-right">Net</th>
-                        <th className="p-1.5 font-medium text-right">EPS</th>
+                        <th className="p-1.5 font-medium">Period (ช่วงเวลา)</th>
+                        <th className="p-1.5 font-medium text-right">Revenue (รายได้)</th>
+                        <th className="p-1.5 font-medium text-right">Net Income (กำไรสุทธิ)</th>
+                        <th className="p-1.5 font-medium text-right">EPS (กำไร/หุ้น)</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/30 text-slate-300">

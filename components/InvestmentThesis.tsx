@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { InvestmentThesis as InvestmentThesisData } from '../types';
 import { BookOpen, CheckCircle, AlertTriangle, XCircle, FileText, Target, Zap, Shield } from 'lucide-react';
@@ -101,12 +102,12 @@ const InvestmentThesis: React.FC<InvestmentThesisProps> = ({ thesis, currency })
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
            
            <div className="bg-slate-800/40 p-3 rounded-lg">
-             <p className="text-[10px] text-slate-500 mb-1">EV/Sales (TTM)</p>
+             <p className="text-[10px] text-slate-500 mb-1">EV/Sales (TTM ย้อนหลัง)</p>
              <p className="text-lg font-mono font-bold text-white">{displayVal(thesis.evSalesTTM, 'x')}</p>
            </div>
            
            <div className="bg-slate-800/40 p-3 rounded-lg">
-             <p className="text-[10px] text-slate-500 mb-1">EV/Sales (Fwd)</p>
+             <p className="text-[10px] text-slate-500 mb-1">EV/Sales (Fwd คาดการณ์)</p>
              <div className="flex items-end gap-2">
                 <p className="text-lg font-mono font-bold text-white">{displayVal(thesis.evSalesFwd, 'x')}</p>
                 <span className="text-[10px] text-slate-500 mb-1">vs {thesis.justifiedEvSales ? thesis.justifiedEvSales.toFixed(2) : '-'}</span>
@@ -114,12 +115,12 @@ const InvestmentThesis: React.FC<InvestmentThesisProps> = ({ thesis, currency })
            </div>
 
            <div className="bg-slate-800/40 p-3 rounded-lg">
-             <p className="text-[10px] text-slate-500 mb-1">Forward PEG (คาดการณ์)</p>
+             <p className="text-[10px] text-slate-500 mb-1">Forward PEG (ล่วงหน้า)</p>
              <p className="text-lg font-mono font-bold text-white">{displayVal(thesis.fwdPeg)}</p>
            </div>
 
            <div className="bg-slate-800/40 p-3 rounded-lg">
-             <p className="text-[10px] text-slate-500 mb-1">Justified PEG (ที่ควรจะเป็น)</p>
+             <p className="text-[10px] text-slate-500 mb-1">Justified PEG (เหมาะสม)</p>
              <p className="text-lg font-mono font-bold text-slate-300">{displayVal(thesis.justifiedPeg)}</p>
            </div>
 

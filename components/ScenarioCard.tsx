@@ -74,12 +74,12 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, currency }) => {
         {/* DCF Value */}
         <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/30">
           <h3 className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-            <DollarSign className="w-3 h-3" /> DCF Value (มูลค่า DCF)
+            <DollarSign className="w-3 h-3" /> DCF Value (มูลค่าตามกระแสเงินสด)
           </h3>
           <p className={`text-2xl font-bold ${titleColor} font-mono`}>
             {currency} {dcfValue.toFixed(2)}
           </p>
-          <p className="text-[10px] text-slate-500">มูลค่าตามกระแสเงินสดที่แท้จริง</p>
+          <p className="text-[10px] text-slate-500">มูลค่าที่แท้จริงจากการดำเนินงาน</p>
         </div>
 
         {/* Relative Value */}
