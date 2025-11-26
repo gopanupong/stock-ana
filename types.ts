@@ -27,6 +27,13 @@ export interface Source {
   uri: string;
 }
 
+export interface QuarterlyData {
+  period: string; // e.g. "Q3 2024"
+  revenue: number;
+  netIncome: number;
+  eps: number;
+}
+
 export interface DeepDiveMetrics {
   // Existing
   equityRiskPremium: number; // ERP
@@ -62,11 +69,8 @@ export interface DeepDiveMetrics {
   pegRatio: number; // Price/Earnings to Growth
   bookValuePerShare: number; // BVPS
   
-  // Quarterly Data
-  latestQuarterLabel: string; // e.g., "Q3 2024"
-  latestQuarterRevenue: number; // Billions
-  latestQuarterNetIncome: number; // Billions
-  latestQuarterEps: number; // Actual EPS
+  // Quarterly History (New Request: 4 Quarters)
+  quarterlyHistory: QuarterlyData[];
 
   // Annual Data
   lastFiscalYearLabel: string; // e.g., "FY 2023"

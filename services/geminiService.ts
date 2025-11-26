@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { StockAnalysis } from "../types";
 
@@ -61,19 +62,26 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
     - **RATIOS:** Beta, PEG, EV/Sales, Coverage Ratio should be natural numbers/decimals (e.g., 1.2, 2.5).
     - **CURRENCY:** Prices and Values in standard currency units (e.g. 150.25).
 
+    **SPECIAL RULES FOR LOSS-MAKING / HIGH GROWTH FIRMS (e.g., IONQ, PLTR, Early Tech):**
+    - If the company has NEGATIVE Operating Margins or Earnings:
+      1. DO NOT extrapolate negative earnings indefinitely (this causes negative value).
+      2. USE THE "TARGET MARGIN" APPROACH: Assume margins improve linearly to a positive industry average (e.g., 20-30% for Software/Tech) over the next 5-10 years.
+      3. Revenue should grow at a high rate, while losses narrow and turn into profits.
+    - **Intrinsic Value (Equity Value per Share) CANNOT BE NEGATIVE.** The lowest possible value for a stock is 0. If your calculation yields a negative number due to net debt > enterprise value, verify the "Option Value of Equity" or floor it at 0.01.
+
     PROCESS:
     1. MARKET DATA (Google Search Tool):
        - Find LATEST Price, Risk-Free Rate (10Y US Treasury - Expect ~3-5%), Beta, Revenue, Operating Margins.
        - Find Debt data, Interest Expense (for Coverage Ratio), and Sector PE.
        - Find Market Cap, Enterprise Value, Cash on Hand, Dividend Yield.
-       - **CRITICAL:** Find the LATEST REPORTED QUARTERLY results (Revenue, Net Income, EPS) and specify the Quarter (e.g., Q3 2024).
+       - **CRITICAL:** Find the LAST 4 REPORTED QUARTERS of financial results (Revenue, Net Income, EPS) and specify the periods (e.g., Q3 2024, Q2 2024, etc.).
        - **CRITICAL:** Find the LAST FULL FISCAL YEAR results (Revenue, Net Income) and specify the Year (e.g., FY 2023).
        - Find PEG Ratio, Gross Margin, and Book Value Per Share.
     
     2. PART 1: DCF SCENARIOS ANALYSIS
        - Create 3 scenarios: Worst, Base, Best.
        - **CALCULATE TWO VALUES PER SCENARIO:**
-         A. Intrinsic Value (DCF Value): Based on cash flows.
+         A. Intrinsic Value (DCF Value): Based on cash flows. **MUST BE >= 0.**
          B. Relative Value: Based on multiples (e.g., Projected EPS * Target PE for that scenario).
        - Base assumptions on the company's current business health and market environment.
     
@@ -81,7 +89,7 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
        - Narrative: Determine "Corporate Lifecycle" and "Story".
        - Risk: Calculate Interest Coverage Ratio, Synthetic Rating, Default Spread.
        - Efficiency: Sales to Capital Ratio, ROE vs Ke.
-       - Supplementary: Market Cap, EV, Cash, Tax Rate, Div Yield, FCFF.
+       - Supplementary: Market Cap, EV, Cash, Tax Rate, Div Yield, FCFF, Quarterly History (4 Qtrs).
 
     4. PART 3: INVESTMENT THESIS (The "Check the House" detailed report)
        Strictly follow the DEEP Framework (Demand, Execution, Economics, Price).
@@ -186,10 +194,12 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
             "grossMargin": number,
             "pegRatio": number,
             "bookValuePerShare": number,
-            "latestQuarterLabel": "string",
-            "latestQuarterRevenue": number,
-            "latestQuarterNetIncome": number,
-            "latestQuarterEps": number,
+            "quarterlyHistory": [
+              { "period": "Q3 2024", "revenue": number, "netIncome": number, "eps": number },
+              { "period": "Q2 2024", "revenue": number, "netIncome": number, "eps": number },
+              { "period": "Q1 2024", "revenue": number, "netIncome": number, "eps": number },
+              { "period": "Q4 2023", "revenue": number, "netIncome": number, "eps": number }
+            ],
             "lastFiscalYearLabel": "string",
             "lastFiscalYearRevenue": number,
             "lastFiscalYearNetIncome": number
@@ -253,19 +263,25 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
         riskFreeRate: cleanSmallPercentage(rawData.riskFreeRate), // Small (e.g. 4.0)
         beta: cleanNumber(rawData.beta),
         lastRevenue: cleanNumber(rawData.lastRevenue),
-        scenarios: rawData.scenarios.map((s: any) => ({
-          ...s,
-          intrinsicValue: cleanNumber(s.intrinsicValue),
-          relativeValue: cleanNumber(s.relativeValue),
-          upsideDownside: cleanLargePercentage(s.upsideDownside), // Large
-          assumptions: {
-            revenueGrowth: cleanLargePercentage(s.assumptions?.revenueGrowth), // Large
-            operatingMargin: cleanLargePercentage(s.assumptions?.operatingMargin), // Large
-            taxRate: cleanLargePercentage(s.assumptions?.taxRate), // Large
-            wacc: cleanLargePercentage(s.assumptions?.wacc), // Large
-            terminalGrowthRate: cleanSmallPercentage(s.assumptions?.terminalGrowthRate), // Small (e.g. 2.5)
-          }
-        })),
+        scenarios: rawData.scenarios.map((s: any) => {
+          const rawIV = cleanNumber(s.intrinsicValue);
+          // Floor Intrinsic Value at 0.01 (Stock price cannot be negative)
+          const iv = rawIV < 0 ? 0.00 : rawIV;
+
+          return {
+            ...s,
+            intrinsicValue: iv,
+            relativeValue: cleanNumber(s.relativeValue),
+            upsideDownside: cleanLargePercentage(s.upsideDownside), // Large
+            assumptions: {
+              revenueGrowth: cleanLargePercentage(s.assumptions?.revenueGrowth), // Large
+              operatingMargin: cleanLargePercentage(s.assumptions?.operatingMargin), // Large
+              taxRate: cleanLargePercentage(s.assumptions?.taxRate), // Large
+              wacc: cleanLargePercentage(s.assumptions?.wacc), // Large
+              terminalGrowthRate: cleanSmallPercentage(s.assumptions?.terminalGrowthRate), // Small (e.g. 2.5)
+            }
+          };
+        }),
         deepDiveMetrics: rawData.deepDiveMetrics ? {
           ...rawData.deepDiveMetrics,
           equityRiskPremium: cleanSmallPercentage(rawData.deepDiveMetrics.equityRiskPremium), // Small
@@ -294,12 +310,18 @@ export const analyzeStockWithGemini = async (ticker: string): Promise<StockAnaly
           grossMargin: cleanLargePercentage(rawData.deepDiveMetrics.grossMargin), // Large
           pegRatio: cleanNumber(rawData.deepDiveMetrics.pegRatio),
           bookValuePerShare: cleanNumber(rawData.deepDiveMetrics.bookValuePerShare),
-          latestQuarterRevenue: cleanNumber(rawData.deepDiveMetrics.latestQuarterRevenue),
-          latestQuarterNetIncome: cleanNumber(rawData.deepDiveMetrics.latestQuarterNetIncome),
-          latestQuarterEps: cleanNumber(rawData.deepDiveMetrics.latestQuarterEps),
+          
+          quarterlyHistory: Array.isArray(rawData.deepDiveMetrics.quarterlyHistory) 
+             ? rawData.deepDiveMetrics.quarterlyHistory.map((q: any) => ({
+                 period: q.period || "N/A",
+                 revenue: cleanNumber(q.revenue),
+                 netIncome: cleanNumber(q.netIncome),
+                 eps: cleanNumber(q.eps)
+             })) 
+             : [],
+
           lastFiscalYearRevenue: cleanNumber(rawData.deepDiveMetrics.lastFiscalYearRevenue),
           lastFiscalYearNetIncome: cleanNumber(rawData.deepDiveMetrics.lastFiscalYearNetIncome),
-          latestQuarterLabel: rawData.deepDiveMetrics.latestQuarterLabel || "Latest Quarter",
           lastFiscalYearLabel: rawData.deepDiveMetrics.lastFiscalYearLabel || "Last Year",
         } : undefined,
         

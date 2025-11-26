@@ -45,10 +45,6 @@ const DamodaranDeepDive: React.FC<DamodaranDeepDiveProps> = ({ metrics, baseWacc
   const pegRatio = Number(metrics.pegRatio) || 0;
   const bvps = Number(metrics.bookValuePerShare) || 0;
   
-  const qRev = Number(metrics.latestQuarterRevenue) || 0;
-  const qNet = Number(metrics.latestQuarterNetIncome) || 0;
-  const qEps = Number(metrics.latestQuarterEps) || 0;
-  
   const yRev = Number(metrics.lastFiscalYearRevenue) || 0;
   const yNet = Number(metrics.lastFiscalYearNetIncome) || 0;
 
@@ -301,37 +297,45 @@ const DamodaranDeepDive: React.FC<DamodaranDeepDiveProps> = ({ metrics, baseWacc
              </div>
           </div>
 
-          {/* Column 3: Recent Performance (Quarterly/Annual) */}
+          {/* Column 3: Recent Performance (Quarterly History) */}
           <div className="space-y-4">
              <h4 className="text-xs font-bold text-slate-500 uppercase border-b border-slate-700/30 pb-1 mb-2">
-               Latest Financials (งบการเงินล่าสุด)
+               Recent History (ประวัติ 4 ไตรมาส)
              </h4>
              
-             {/* Quarterly Block */}
-             <div className="bg-slate-900/30 p-2 rounded border border-slate-700/20 mb-2">
-               <div className="flex items-center gap-1.5 mb-1.5">
-                  <Calendar className="w-3 h-3 text-blue-400" />
-                  <span className="text-[10px] text-blue-300 font-semibold uppercase">{metrics.latestQuarterLabel || 'Recent Quarter'}</span>
-               </div>
-               <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-400">Revenue (รายได้)</span>
-                  <span className="text-white font-mono">{qRev.toLocaleString()} B</span>
-               </div>
-               <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-400">Net Income (กำไรสุทธิ)</span>
-                  <span className="text-white font-mono">{qNet.toLocaleString()} B</span>
-               </div>
-               <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">EPS (กำไรต่อหุ้น)</span>
-                  <span className="text-emerald-300 font-mono font-bold">${qEps.toFixed(2)}</span>
-               </div>
+             {/* Quarterly Table */}
+             <div className="bg-slate-900/30 rounded border border-slate-700/20 overflow-hidden mb-3">
+               <table className="w-full text-[10px] md:text-xs text-left">
+                  <thead className="bg-slate-800/50 text-slate-400">
+                     <tr>
+                        <th className="p-1.5 font-medium">Period</th>
+                        <th className="p-1.5 font-medium text-right">Rev</th>
+                        <th className="p-1.5 font-medium text-right">Net</th>
+                        <th className="p-1.5 font-medium text-right">EPS</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/30 text-slate-300">
+                     {metrics.quarterlyHistory && metrics.quarterlyHistory.length > 0 ? (
+                        metrics.quarterlyHistory.map((q, i) => (
+                           <tr key={i} className="hover:bg-slate-800/30 transition-colors">
+                              <td className="p-1.5 font-mono text-blue-300">{q.period}</td>
+                              <td className="p-1.5 text-right font-mono">{Number(q.revenue).toLocaleString()}B</td>
+                              <td className="p-1.5 text-right font-mono">{Number(q.netIncome).toLocaleString()}B</td>
+                              <td className="p-1.5 text-right font-mono text-emerald-400">{Number(q.eps).toFixed(2)}</td>
+                           </tr>
+                        ))
+                     ) : (
+                        <tr><td colSpan={4} className="p-2 text-center text-slate-500 italic">No quarterly data</td></tr>
+                     )}
+                  </tbody>
+               </table>
              </div>
 
              {/* Annual Block */}
              <div className="bg-slate-900/30 p-2 rounded border border-slate-700/20">
                <div className="flex items-center gap-1.5 mb-1.5">
                   <TrendingUp className="w-3 h-3 text-indigo-400" />
-                  <span className="text-[10px] text-indigo-300 font-semibold uppercase">{metrics.lastFiscalYearLabel || 'Recent Year'}</span>
+                  <span className="text-[10px] text-indigo-300 font-semibold uppercase">{metrics.lastFiscalYearLabel || 'Recent Year'} (รายปีล่าสุด)</span>
                </div>
                <div className="flex justify-between text-xs mb-1">
                   <span className="text-slate-400">Total Revenue (รายได้รวม)</span>
